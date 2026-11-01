@@ -1,0 +1,90 @@
+
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: ['plan', 'apply', 'destroy'],
+            description: 'Terraform action to run'
+        )
+    }
+
+    environment {
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_DEFAULT_REGION = 'eu-north-1'
+    }
+
+    stages {
+        stage('CHECKOUT GIT CODE') {
+            steps {
+                echo 'Checking out code from GitHub'
+                git branch: 'main',
+                    url: 'https://github.com/Mahadev-1994/Terraform.git'
+            }
+        }
+
+        stage('TERRAFORM INIT') {
+            steps {
+                echo 'Initializing Terraform'
+                sh 'terraform init'
+            }
+        }
+
+        stage('TERRAFORM VALIDATE') {
+            steps {
+                echo 'Validating Terraform configuration'
+                sh 'terraform validate'
+            }
+        }
+
+        stage('TERRAFORM PLAN') {
+            when {
+                expression {
+                    params.ACTION == 'plan' ||
+                    params.ACTION == 'apply'
+                }
+            }
+            steps {
+                echo 'Running Terraform Plan'
+                sh 'terraform plan -out=tfplan'
+            }
+        }
+
+        stage('TERRAFORM APPLY') {
+            when {
+                   expression {
+                         params.ACTION == 'apply'
+                    }
+            }
+            steps {
+                echo 'Applying Terraform configuration'
+                sh 'terraform apply -auto-approve tfplan'
+            }
+        }
+
+        stage('TERRAFORM DESTROY') {
+            when {                
+	            expression {
+                    params.ACTION == 'destroy'
+                }
+            }
+            steps {
+                echo 'Destroying Terraform infrastructure'
+                      sh 'terraform destroy -auto-approve'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Terraform action completed successfully'
+        }
+
+        failure {
+            echo 'Terraform failed'
+        }
+    }
+
+
