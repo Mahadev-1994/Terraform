@@ -2,60 +2,60 @@
 # PROVIDER — which cloud & region
 # -----------------------------
 provider "aws" {
-  region = "eu-west-2"
+  region = "eu-north-1"
 }
 
 # -----------------------------
 # VPC — our own private network
 # -----------------------------
-resource "aws_vpc" "my_vpc" {
+resource "aws_vpc" "my_vpc_tf" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
 
   tags = {
-    Name = "my-vpc"
+    Name = "my-vpc-tf"
   }
 }
 
 # -----------------------------
 # INTERNET GATEWAY — door to the internet
 # -----------------------------
-resource "aws_internet_gateway" "my_igw" {
-  vpc_id = aws_vpc.my_vpc.id
+resource "aws_internet_gateway" "my_tf_igw" {
+  vpc_id = aws_vpc.my_vpc_tf.id
 
   tags = {
-    Name = "my-igw"
+    Name = "my-tf-igw"
   }
 }
 
 # -----------------------------
 # PUBLIC SUBNET — where EC2 will live
 # -----------------------------
-resource "aws_subnet" "my_subnet" {
-  vpc_id                  = aws_vpc.my_vpc.id
+resource "aws_subnet" "my_tf_subnet" {
+  vpc_id                  = aws_vpc.my_vpc_tf.id
   cidr_block              = "10.0.1.0/24"
-  availability_zone       = "eu-west-2a"
+  availability_zone       = "eu-north-1a"
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "my-public-subnet"
+    Name = "my-tf-public-subnet"
   }
 }
 
 # -----------------------------
 # ROUTE TABLE — send internet traffic through the gateway
 # -----------------------------
-resource "aws_route_table" "my_rt" {
-  vpc_id = aws_vpc.my_vpc.id
+resource "aws_route_table" "my_tf_rt" {
+  vpc_id = aws_vpc.my_vpc_tf.id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.my_igw.id
+    gateway_id = aws_internet_gateway.my_tf_igw.id
   }
 
   tags = {
-    Name = "my-route-table"
+    Name = "my-tf-route-table"
   }
 }
 
@@ -63,17 +63,17 @@ resource "aws_route_table" "my_rt" {
 # ROUTE TABLE ASSOCIATION — connect subnet to that route
 # -----------------------------
 resource "aws_route_table_association" "my_rt_assoc" {
-  subnet_id      = aws_subnet.my_subnet.id
-  route_table_id = aws_route_table.my_rt.id
+  subnet_id      = aws_subnet.my_tf_subnet.id
+  route_table_id = aws_route_table.my_tf_rt.id
 }
 
 # -----------------------------
 # SECURITY GROUP — allow SSH (22) and web traffic (80)
 # -----------------------------
-resource "aws_security_group" "my_sg" {
+resource "aws_security_group" "my_tf_sg" {
   name        = "allow-ssh-http"
   description = "Allow SSH and HTTP"
-  vpc_id      = aws_vpc.my_vpc.id
+  vpc_id      = aws_vpc.my_vpc_tf.id
 
   ingress {
     description = "SSH"
@@ -99,7 +99,7 @@ resource "aws_security_group" "my_sg" {
   }
 
   tags = {
-    Name = "my-sg"
+    Name = "my-tf-sg"
   }
 }
 
@@ -126,13 +126,13 @@ data "aws_ami" "al2023" {
 # -----------------------------
 # EC2 INSTANCE — the server that hosts our app
 # -----------------------------
-resource "aws_instance" "my_ec2" {
+resource "aws_instance" "my_tf_ec2" {
   ami                         = data.aws_ami.al2023.id
   instance_type               = "t3.micro"
-  subnet_id                   = aws_subnet.my_subnet.id
-  vpc_security_group_ids      = [aws_security_group.my_sg.id]
+  subnet_id                   = aws_subnet.my_tf_subnet.id
+  vpc_security_group_ids      = [aws_security_group.my_tf_sg.id]
   associate_public_ip_address = true
-  key_name                    = "my-keypair" # existing AWS key pair
+  key_name                    = "EC2-Instance-Key-Pair" # existing AWS key pair
 
   # This script runs automatically when the instance boots.
   # It installs a web server and hosts a simple app (a webpage).
@@ -155,5 +155,5 @@ resource "aws_instance" "my_ec2" {
 # OUTPUT — show the public IP after apply
 # -----------------------------
 output "instance_public_ip" {
-  value = aws_instance.my_ec2.public_ip
+  value = aws_instance.my_tf_ec2.public_ip
 }
